@@ -1,0 +1,17 @@
+WITH cumulative AS (
+SELECT c.id, c.name,c.investment, o.month,
+SUM(o.profit) OVER (PARTITION BY c.id ORDER BY o.month)
+AS cum_profit
+FROM clients AS c
+JOIN operations AS o ON c.id = o.client_id
+),
+payback AS (
+SELECT name, investment, month,
+cum_profit - investment AS "return",
+ROW_NUMBER() OVER (PARTITION BY id ORDER BY month) AS rn
+FROM cumulative WHERE cum_profit >= investment
+)
+SELECT name, investment, month AS "month_of_payback", "return"
+FROM payback
+WHERE rn = 1
+ORDER BY "return" DESC;
