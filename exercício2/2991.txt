@@ -1,0 +1,50 @@
+select
+d.nome as "nome departamento",
+count(cs.matr) as "numero de empregados",
+
+round(avg(
+case when cs.salario = 0 then 0
+ else cs.salario end
+), 2) as "media salarial",
+
+max(
+case when cs.salario = 0 then 0
+ else cs.salario end
+) as "maior salario",
+
+min(
+case when cs.salario = 0 then 0
+ else cs.salario end
+) as "menor salario"
+
+from ( select v.matr, v.lotacao, v.total_vencimentos, d.total_descontos,
+round(v.total_vencimentos - coalesce(d.total_descontos, 0), 2) as salario
+from ( select emp.matr, emp.lotacao_div as lotacao,
+coalesce(sum(venc.valor), 0) as total_vencimentos
+from empregado emp
+
+left join emp_venc ev on emp.matr = ev.matr
+
+left join vencimento venc on ev.cod_venc = venc.cod_venc
+group by emp.matr, emp.lotacao_div
+) v
+
+left join (
+select
+emp.matr,
+emp.lotacao_div as lotacao,
+coalesce(sum(descs.valor), 0) as total_descontos
+from empregado emp
+left join emp_desc ed on emp.matr = ed.matr
+left join desconto descs on ed.cod_desc = descs.cod_desc
+group by emp.matr, emp.lotacao_div
+) d
+on v.matr = d.matr
+) cs
+
+join empregado e on cs.matr = e.matr
+join divisao div on cs.lotacao = div.cod_divisao
+join departamento d on div.cod_dep = d.cod_dep
+
+group by d.nome
+order by "media salarial" desc;

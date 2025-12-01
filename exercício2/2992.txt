@@ -1,0 +1,46 @@
+with tot_venc as (
+select ev.matr, sum(v.valor) as total_venc
+from emp_venc ev
+join vencimento v on v.cod_venc = ev.cod_venc
+group by ev.matr
+),
+tot_desc as (
+select ed.matr, sum(d.valor) as total_desc
+from emp_desc ed
+join desconto d on d.cod_desc = ed.cod_desc
+group by ed.matr
+),
+emp_net as (
+select e.matr, e.lotacao_div, e.lotacao, e.lotacao_div as cod_divisao,
+coalesce(tv.total_venc, 0) - coalesce(td.total_desc, 0) as salario_liquido
+from empregado e
+left join tot_venc tv on tv.matr = e.matr
+left join tot_desc td on td.matr = e.matr
+),
+media_divisao as (
+select
+d.cod_dep,
+d.nome as departamento_nome,
+div.nome as divisao_nome,
+round(coalesce(avg(en.salario_liquido), 0), 2) as media_salario
+from departamento d
+join divisao div on div.cod_dep = d.cod_dep
+left join emp_net en on en.cod_divisao = div.cod_divisao
+group by d.cod_dep, d.nome, div.nome
+)
+
+select
+md.departamento_nome,
+md.divisao_nome,
+md.media_salario
+from media_divisao md
+inner join (
+select cod_dep, max(media_salario) as max_media
+from media_divisao
+group by cod_dep
+) as max_por_departamento
+on 
+md.cod_dep = max_por_departamento.cod_dep 
+and md.media_salario = max_por_departamento.max_media
+order by
+md.media_salario desc;
